@@ -68,8 +68,6 @@ kubectl apply -f k8s/
     Mobile: Connects to http://localhost:3000
     API_Gateway: http://localhost:4000
 
-📜 Document - Architecture
+📜 License
 
-document/SmartVehicleArchtecture.docx
-
-
+MIT License

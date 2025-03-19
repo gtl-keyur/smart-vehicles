@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: iot_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:latest
+    container_name: mongo_db
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:latest
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+
+  message_broker:
+    image: eclipse-mosquitto:latest
+    container_name: mqtt_broker
+    restart: always
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  backend:
+    build: ./backend
+    container_name: backend_service
+    restart: always
+    depends_on:
+      - postgres
+      - mongo
+      - redis
+      - message_broker
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://admin:password@postgres:5432/iot_db
+      MONGO_URL: mongodb://mongo:27017/iot_data
+      REDIS_URL: redis://redis:6379
+      MQTT_BROKER: mqtt://message_broker:1883
+    volumes:
+      - ./backend:/app
+    command: ["npm", "run", "start"]
+
+  api_gateway:
+    build: ./api_gateway
+    container_name: api_gateway
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "4000:4000"
+    environment:
+      BACKEND_URL: http://backend:3000
+    volumes:
+      - ./api_gateway:/app
+    command: ["npm", "run", "start"]
+
+  web:
+    build: ./web
+    container_name: web_frontend
+    restart: always
+    depends_on:
+      - api_gateway
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web:/app
+    command: ["npm", "start"]
+
+  mobile:
+    build: ./mobile
+    container_name: mobile_app
+    restart: always
+    depends_on:
+      - api_gateway
+    volumes:
+      - ./mobile:/app
+    command: ["flutter", "run"]
+
+volumes:
+  postgres_data:
+  mongo_data:
